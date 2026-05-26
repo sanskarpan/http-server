@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -15,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sanskar/http-server/internal/request"
-	"github.com/sanskar/http-server/internal/response"
-	"github.com/sanskar/http-server/internal/router"
-	"github.com/sanskar/http-server/internal/server"
-	"github.com/sanskar/http-server/pkg/httpserver"
+	"github.com/sanskarpan/http-server/internal/request"
+	"github.com/sanskarpan/http-server/internal/response"
+	"github.com/sanskarpan/http-server/internal/router"
+	"github.com/sanskarpan/http-server/internal/server"
+	"github.com/sanskarpan/http-server/pkg/httpserver"
 )
 
 func TestBasicHTTPRequest(t *testing.T) {
@@ -438,6 +439,74 @@ func TestHEADUsesGETHandlerWithoutBody(t *testing.T) {
 	}
 	if len(body) != 0 {
 		t.Fatalf("Expected empty HEAD body, got %q", string(body))
+	}
+
+	shutdownServer(t, srv)
+}
+
+func TestIdleKeepAliveTimeoutClosesConnectionWithoutBadRequest(t *testing.T) {
+	addr, cleanup := reserveAddr(t)
+	defer cleanup()
+
+	config := httpserver.DefaultConfig()
+	config.Addr = addr
+	config.ReadTimeout = 200 * time.Millisecond
+	config.WriteTimeout = 200 * time.Millisecond
+	config.IdleTimeout = 200 * time.Millisecond
+
+	srv := httpserver.NewWithConfig(config)
+	srv.GET("/health", func(w httpserver.ResponseWriter, r *httpserver.Request) {
+		_, _ = w.WriteString("ok")
+	})
+
+	go func() {
+		_ = srv.Listen(addr)
+	}()
+	waitForServer(t, addr)
+
+	conn, err := net.DialTimeout("tcp", addr, time.Second)
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer conn.Close()
+
+	requestPayload := "GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\n"
+	if _, err := io.WriteString(conn, requestPayload); err != nil {
+		t.Fatalf("Failed to write request: %v", err)
+	}
+
+	reader := bufio.NewReader(conn)
+	req, err := http.NewRequest(http.MethodGet, "http://"+addr+"/health", nil)
+	if err != nil {
+		t.Fatalf("Failed to build request: %v", err)
+	}
+	resp, err := http.ReadResponse(reader, req)
+	if err != nil {
+		t.Fatalf("Failed to read HTTP response: %v", err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("Failed to close response body: %v", err)
+	}
+	if string(body) != "ok" {
+		t.Fatalf("Expected body 'ok', got %q", string(body))
+	}
+
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("Failed to set read deadline: %v", err)
+	}
+	trailing, err := io.ReadAll(reader)
+	if err != nil {
+		var netErr net.Error
+		if !(errors.Is(err, io.EOF) || (errors.As(err, &netErr) && netErr.Timeout())) {
+			t.Fatalf("Unexpected read error after idle timeout: %v", err)
+		}
+	}
+	if len(trailing) != 0 {
+		t.Fatalf("Expected silent idle close, got trailing data %q", string(trailing))
 	}
 
 	shutdownServer(t, srv)

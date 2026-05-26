@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a reproducible defect in the server, tooling, or documentation.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the failure mode and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include commands, requests, payloads, or code needed to reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Explain user impact, operational risk, or security relevance.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation attempted
+      description: List the tests or checks already run.

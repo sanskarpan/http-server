@@ -15,8 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sanskar/http-server/internal/request"
-	"github.com/sanskar/http-server/internal/response"
+	"github.com/sanskarpan/http-server/internal/request"
+	"github.com/sanskarpan/http-server/internal/response"
 )
 
 // WebSocket GUID as per RFC 6455

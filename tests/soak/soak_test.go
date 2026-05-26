@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sanskar/http-server/internal/server"
-	"github.com/sanskar/http-server/pkg/httpserver"
+	"github.com/sanskarpan/http-server/internal/server"
+	"github.com/sanskarpan/http-server/pkg/httpserver"
 )
 
 type scenario struct {

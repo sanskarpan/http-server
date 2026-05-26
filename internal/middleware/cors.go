@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sanskar/http-server/internal/request"
-	"github.com/sanskar/http-server/internal/response"
-	"github.com/sanskar/http-server/internal/router"
+	"github.com/sanskarpan/http-server/internal/request"
+	"github.com/sanskarpan/http-server/internal/response"
+	"github.com/sanskarpan/http-server/internal/router"
 )
 
 // CORSConfig contains CORS configuration
