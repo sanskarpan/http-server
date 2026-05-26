@@ -924,7 +924,7 @@ BenchmarkWebSocketFrame
 package main
 
 import (
-    "github.com/sanskar/http-server/pkg/httpserver"
+    "github.com/sanskarpan/http-server/pkg/httpserver"
 )
 
 func main() {

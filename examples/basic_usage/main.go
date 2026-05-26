@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/sanskar/http-server/pkg/httpserver"
+	"github.com/sanskarpan/http-server/pkg/httpserver"
 )
 
 func main() {

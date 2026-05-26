@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sanskar/http-server/internal/pool"
-	"github.com/sanskar/http-server/internal/request"
-	"github.com/sanskar/http-server/internal/response"
+	"github.com/sanskarpan/http-server/internal/pool"
+	"github.com/sanskarpan/http-server/internal/request"
+	"github.com/sanskarpan/http-server/internal/response"
 )
 
 // Handler is the interface for handling HTTP requests
@@ -171,21 +171,15 @@ func (s *Server) acceptConnections() {
 			continue
 		}
 
-		// Submit to worker pool
-		submitted := s.workerPool.Submit(func() {
-			s.handleConnection(conn)
-		})
-
-		if !submitted {
-			// Worker pool queue is full, send 503
-			s.sendServiceUnavailable(conn)
-			conn.Close()
-		}
+		s.wg.Add(1)
+		go s.handleConnection(conn)
 	}
 }
 
 // handleConnection handles a single connection
 func (s *Server) handleConnection(conn net.Conn) {
+	defer s.wg.Done()
+
 	s.activeConnections.Add(1)
 	s.totalConnections.Add(1)
 	defer s.activeConnections.Add(-1)
@@ -211,6 +205,10 @@ func (s *Server) handleConnection(conn net.Conn) {
 		req, err := s.requestParser.Parse(reader, conn.RemoteAddr().String())
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) || errors.Is(err, io.EOF) {
+				return
+			}
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
 				return
 			}
 			select {
@@ -247,8 +245,24 @@ func (s *Server) handleConnection(conn net.Conn) {
 			handler = s.middleware[i](handler)
 		}
 
-		// Handle the request
-		s.serveRequest(handler, writer, req)
+		done := make(chan struct{})
+		submitted := s.workerPool.Submit(func() {
+			defer close(done)
+			s.serveRequest(handler, writer, req)
+		})
+		if !submitted {
+			_ = response.WriteError(writer, response.StatusServiceUnavailable, "Service Unavailable")
+			if err := writer.Close(); err != nil {
+				log.Printf("Error flushing service unavailable response: %v", err)
+			}
+			return
+		}
+
+		select {
+		case <-done:
+		case <-s.shutdownCh:
+			return
+		}
 
 		// Finalize response
 		if err := writer.Close(); err != nil {

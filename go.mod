@@ -1,4 +1,4 @@
-module github.com/sanskar/http-server
+module github.com/sanskarpan/http-server
 
 go 1.25.5
 

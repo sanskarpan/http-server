@@ -5,12 +5,13 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/sanskar/http-server/internal/middleware"
-	"github.com/sanskar/http-server/internal/request"
-	"github.com/sanskar/http-server/internal/response"
-	"github.com/sanskar/http-server/internal/router"
-	"github.com/sanskar/http-server/internal/server"
-	"github.com/sanskar/http-server/internal/websocket"
+	"github.com/sanskarpan/http-server/internal/middleware"
+	"github.com/sanskarpan/http-server/internal/pool"
+	"github.com/sanskarpan/http-server/internal/request"
+	"github.com/sanskarpan/http-server/internal/response"
+	"github.com/sanskarpan/http-server/internal/router"
+	"github.com/sanskarpan/http-server/internal/server"
+	"github.com/sanskarpan/http-server/internal/websocket"
 )
 
 // Server is the HTTP server
@@ -38,13 +39,48 @@ type Middleware = router.Middleware
 // WebSocket is a WebSocket connection
 type WebSocket = websocket.WebSocket
 
+// Config is the public server configuration type.
+type Config = server.Config
+
+// StaticConfig is the public static file server configuration type.
+type StaticConfig = server.StaticConfig
+
+// CORSConfig is the public CORS configuration type.
+type CORSConfig = middleware.CORSConfig
+
+// WorkerPoolStats exposes worker-pool telemetry.
+type WorkerPoolStats = pool.PoolStats
+
+// ServerStats exposes server telemetry.
+type ServerStats struct {
+	ActiveConnections int64
+	TotalConnections  int64
+	TotalRequests     int64
+	WorkerPoolStats   WorkerPoolStats
+}
+
 // New creates a new HTTP server
 func New() *Server {
 	return NewWithConfig(nil)
 }
 
+// DefaultConfig returns the default server configuration.
+func DefaultConfig() *Config {
+	return server.DefaultConfig()
+}
+
+// DefaultStaticConfig returns the default static-file configuration.
+func DefaultStaticConfig(root string) *StaticConfig {
+	return server.DefaultStaticConfig(root)
+}
+
+// DefaultCORSConfig returns the default CORS configuration.
+func DefaultCORSConfig() *CORSConfig {
+	return middleware.DefaultCORSConfig()
+}
+
 // NewWithConfig creates a new HTTP server with custom configuration
-func NewWithConfig(config *server.Config) *Server {
+func NewWithConfig(config *Config) *Server {
 	if config == nil {
 		config = server.DefaultConfig()
 	}
@@ -121,7 +157,7 @@ func (s *Server) Static(urlPath, dirPath string) {
 }
 
 // StaticFS serves static files with custom configuration
-func (s *Server) StaticFS(urlPath string, config *server.StaticConfig) {
+func (s *Server) StaticFS(urlPath string, config *StaticConfig) {
 	handler := server.StaticFileServer(config)
 	s.router.GET(urlPath+"/*filepath", handler)
 }
@@ -174,8 +210,23 @@ func (s *Server) Shutdown(timeout time.Duration) error {
 }
 
 // SetConfig sets server configuration
-func (s *Server) SetConfig(config *server.Config) {
+func (s *Server) SetConfig(config *Config) {
 	s.config = config
+}
+
+// Stats returns a point-in-time snapshot of server metrics.
+func (s *Server) Stats() ServerStats {
+	if s.server == nil {
+		return ServerStats{}
+	}
+
+	stats := s.server.Stats()
+	return ServerStats{
+		ActiveConnections: stats.ActiveConnections,
+		TotalConnections:  stats.TotalConnections,
+		TotalRequests:     stats.TotalRequests,
+		WorkerPoolStats:   stats.WorkerPoolStats,
+	}
 }
 
 // Group represents a route group
@@ -260,7 +311,7 @@ func CORS() Middleware {
 }
 
 // CORSWithConfig returns a CORS middleware with custom config
-func CORSWithConfig(config *middleware.CORSConfig) Middleware {
+func CORSWithConfig(config *CORSConfig) Middleware {
 	return middleware.CORS(config)
 }
 

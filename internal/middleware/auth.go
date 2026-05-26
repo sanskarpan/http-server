@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"strings"
 
-	"github.com/sanskar/http-server/internal/request"
-	"github.com/sanskar/http-server/internal/response"
-	"github.com/sanskar/http-server/internal/router"
+	"github.com/sanskarpan/http-server/internal/request"
+	"github.com/sanskarpan/http-server/internal/response"
+	"github.com/sanskarpan/http-server/internal/router"
 )
 
 // BasicAuth returns a basic authentication middleware

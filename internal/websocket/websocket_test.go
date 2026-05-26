@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sanskar/http-server/internal/request"
-	"github.com/sanskar/http-server/internal/response"
+	"github.com/sanskarpan/http-server/internal/request"
+	"github.com/sanskarpan/http-server/internal/response"
 )
 
 // Mock connection for testing

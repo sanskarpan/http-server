@@ -1,0 +1,24 @@
+name: long-validation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  long-validation:
+    name: long-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run longer fuzz baseline
+        run: FUZZ_TIME=15s make fuzz-long
+      - name: Run longer soak baseline
+        run: HTTP_SERVER_SOAK_DURATION=45s HTTP_SERVER_SOAK_CONCURRENCY=64 make soak-long
